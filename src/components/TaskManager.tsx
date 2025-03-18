@@ -150,9 +150,25 @@ export function TaskManager({ onClose }: TaskManagerProps) {
       <div className="task-manager-container">
         <div className="task-manager-header">
           <h2>Gestionnaire de tâches</h2>
-          <button className="close-task-manager" onClick={onClose}>
-            <X size={20} />
-          </button>
+          <div className="task-manager-actions">
+            <button
+              className="add-task-button"
+              onClick={() => setShowNewTaskModal(true)}
+            >
+              <Plus size={16} />
+              <span>Nouvelle tâche</span>
+            </button>
+            <button
+              className="view-mode-toggle"
+              onClick={() => setViewMode(viewMode === 'kanban' ? 'list' : 'kanban')}
+              title={viewMode === 'kanban' ? 'Vue liste' : 'Vue kanban'}
+            >
+              {viewMode === 'kanban' ? <List size={20} /> : <Layout size={20} />}
+            </button>
+            <button className="close-task-manager" onClick={onClose}>
+              <X size={20} />
+            </button>
+          </div>
         </div>
 
         <DndContext 

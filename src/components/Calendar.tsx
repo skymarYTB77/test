@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, isLeapYear, addMonths, subMonths, startOfWeek, endOfWeek, addDays, startOfDay, endOfDay, eachHourOfInterval, isSameHour, parseISO } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, X, Clock, Check, Eye, Trash2 } from 'lucide-react';
+import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, X, Clock, Check, Eye, Trash2, Layout, List } from 'lucide-react';
 import '../styles/Calendar.css';
 
 interface CalendarProps {
@@ -164,10 +164,32 @@ export function Calendar({ onClose }: CalendarProps) {
     <div className="calendar-overlay">
       <div className="calendar-container">
         <div className="calendar-header">
-          <h2>Calendrier</h2>
-          <button className="close-calendar" onClick={onClose}>
-            <X size={20} />
-          </button>
+          <div className="calendar-navigation">
+            <button onClick={handlePrevPeriod}>
+              <ChevronLeft size={20} />
+            </button>
+            <h2>
+              {viewMode === 'month' 
+                ? format(currentDate, 'MMMM yyyy', { locale: fr })
+                : `Semaine du ${format(weekStart, 'dd/MM/yyyy')}`
+              }
+            </h2>
+            <button onClick={handleNextPeriod}>
+              <ChevronRight size={20} />
+            </button>
+          </div>
+          <div className="calendar-actions">
+            <button
+              className="view-mode-toggle"
+              onClick={toggleViewMode}
+              title={viewMode === 'month' ? 'Vue semaine' : 'Vue mois'}
+            >
+              {viewMode === 'month' ? <Layout size={20} /> : <Calendar size={20} />}
+            </button>
+            <button className="close-calendar" onClick={onClose}>
+              <X size={20} />
+            </button>
+          </div>
         </div>
 
         {viewMode === 'month' ? (
