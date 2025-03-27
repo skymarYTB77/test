@@ -1,5 +1,5 @@
 import React from 'react';
-import { Type, Image, Folder } from 'lucide-react';
+import { Type, Image, Folder, FileType } from 'lucide-react';
 
 interface SidebarProps {
   activeTab: string;
@@ -10,7 +10,8 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
   const tools = [
     { id: 'folder', icon: Folder, label: 'Dossier' },
     { id: 'text', icon: Type, label: 'Texte' },
-    { id: 'image', icon: Image, label: 'Image' }
+    { id: 'image', icon: Image, label: 'Image' },
+    { id: 'format', icon: FileType, label: 'Format' }
   ];
 
   return (
