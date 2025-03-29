@@ -1,63 +1,42 @@
-import React from 'react';
-import { List } from 'lucide-react';
+import React, { useState } from 'react';
+import { List, X } from 'lucide-react';
 import '../styles/TaskManager.css';
 
 export function TaskManager() {
-  const openTaskManager = () => {
-    const width = 1200;
-    const height = 800;
-    const left = (window.screen.width - width) / 2;
-    const top = (window.screen.height - height) / 2;
-
-    const popup = window.open(
-      '',
-      'TaskManager',
-      `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes,status=no,location=no,menubar=no,toolbar=no`
-    );
-
-    if (popup) {
-      popup.document.write(`
-        <!DOCTYPE html>
-        <html>
-          <head>
-            <title>Gestionnaire de tâches</title>
-            <style>
-              body { 
-                margin: 0; 
-                padding: 0; 
-                overflow: hidden; 
-                background: #1a1a1a;
-              }
-              iframe {
-                position: fixed;
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: 100%;
-                border: none;
-              }
-            </style>
-          </head>
-          <body>
-            <iframe 
-              src="https://gestionnairedetaches.netlify.app"
-              allow="fullscreen"
-              loading="eager"
-            ></iframe>
-          </body>
-        </html>
-      `);
-      popup.document.close();
-    }
-  };
+  const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <button 
-      className="task-manager-toggle" 
-      onClick={openTaskManager}
-      title="Ouvrir le gestionnaire de tâches"
-    >
-      <List size={20} />
-    </button>
+    <>
+      <button 
+        className="task-manager-toggle" 
+        onClick={() => setIsOpen(true)}
+        title="Ouvrir le gestionnaire de tâches"
+      >
+        <List size={20} />
+      </button>
+
+      {isOpen && (
+        <div className="task-manager-overlay">
+          <div className="task-manager-container">
+            <div className="task-manager-header">
+              <h2>Gestionnaire de tâches</h2>
+              <button 
+                className="close-task-manager"
+                onClick={() => setIsOpen(false)}
+              >
+                <X size={24} />
+              </button>
+            </div>
+            <div className="task-manager-content">
+              <iframe 
+                src="https://gestionnairedetaches.netlify.app"
+                title="Gestionnaire de tâches"
+                className="task-manager-iframe"
+              />
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
