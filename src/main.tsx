@@ -1,18 +1,14 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { Toaster } from 'react-hot-toast';
+import { Provider } from 'react-redux';
+import { store } from './store/store';
 import App from './App.tsx';
-import { AuthProvider } from './contexts/AuthContext';
-import { ThemeProvider } from './contexts/ThemeContext';
 import './index.css';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <AuthProvider>
-      <ThemeProvider>
-        <Toaster position="top-right" />
-        <App />
-      </ThemeProvider>
-    </AuthProvider>
+    <Provider store={store}>
+      <App />
+    </Provider>
   </StrictMode>
 );
