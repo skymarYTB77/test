@@ -38,53 +38,12 @@
 .task-manager-container {
   background: var(--dark-bg);
   border-radius: 12px;
-  width: 90%;
-  max-width: 1200px;
-  height: 80vh;
+  width: 800px;
+  height: 600px;
   border: 1px solid var(--glass-border);
-  display: flex;
-  flex-direction: column;
   overflow: hidden;
   animation: fadeIn 0.3s ease-out;
-}
-
-.task-manager-header {
-  padding: 20px;
-  border-bottom: 1px solid var(--glass-border);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.task-manager-header h2 {
-  margin: 0;
-  font-size: 1.5rem;
-  background: var(--save-gradient);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-
-.close-task-manager {
-  background: none;
-  border: none;
-  color: white;
-  cursor: pointer;
-  padding: 8px;
-  border-radius: 4px;
-  transition: all 0.2s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.close-task-manager:hover {
-  background: rgba(255, 255, 255, 0.1);
-  transform: rotate(90deg);
-}
-
-.task-manager-content {
-  flex: 1;
-  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
 }
 
 .task-manager-iframe {
@@ -105,10 +64,9 @@
   }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 840px) {
   .task-manager-container {
-    width: 100%;
-    height: 100%;
-    border-radius: 0;
+    width: 95%;
+    height: 80vh;
   }
 }
