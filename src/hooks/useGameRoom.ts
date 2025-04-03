@@ -202,6 +202,15 @@ export function useGameRoom(roomCode: string | null) {
     }
   };
 
+  const deleteRoom = async (code: string) => {
+    try {
+      await deleteDoc(doc(db, 'games', code));
+    } catch (err) {
+      console.error('Error deleting room:', err);
+      throw new Error('Erreur lors de la suppression du salon');
+    }
+  };
+
   return {
     room,
     error,
@@ -210,6 +219,7 @@ export function useGameRoom(roomCode: string | null) {
     leaveRoom,
     setPlayerReady,
     findRoomByCode,
-    updateGameState
+    updateGameState,
+    deleteRoom
   };
 }

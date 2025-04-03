@@ -4,6 +4,8 @@ export type Player = {
   isHost: boolean;
   isReady: boolean;
   answers?: Record<string, string>;
+  score?: number;
+  validWords?: number;
 };
 
 export type GameRoom = {
@@ -17,6 +19,8 @@ export type GameRoom = {
   currentLetter?: string;
   timeLeft?: number;
   answers?: Record<string, Record<string, string>>;
+  seed?: string;
+  roundHistory?: RoundHistory[];
 };
 
 export type Category = {
@@ -27,6 +31,17 @@ export type Category = {
 export type Round = {
   letter: string;
   answers: Record<string, string>;
+  score: number;
+};
+
+export type RoundHistory = {
+  letter: string;
+  playerAnswers: Record<string, PlayerRoundAnswers>;
+};
+
+export type PlayerRoundAnswers = {
+  answers: Record<string, string>;
+  validWords: number;
   score: number;
 };
 

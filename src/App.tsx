@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Play, Timer, RefreshCw, Trophy, Users, Clock, Settings, ChevronLeft, Crown, Plus, Minus, Edit, Check, X, History, ChevronDown, ChevronUp } from 'lucide-react';
 import { useGameRoom } from './hooks/useGameRoom';
 import { WaitingRoom } from './components/WaitingRoom';
-import type { GameRoom, Category, GameSettings } from './types';
+import { ScoreBoard } from './components/ScoreBoard';
+import type { GameRoom, Category, GameSettings, RoundHistory } from './types';
 
 type Round = {
   letter: string;
@@ -30,6 +31,8 @@ const DEFAULT_CATEGORIES: Category[] = [
   { name: 'sport', label: 'Sport' },
 ];
 
+const STORAGE_KEY = 'petit-bac-history';
+
 function App() {
   const [gameState, setGameState] = useState<'menu' | 'settings' | 'playing' | 'waiting' | 'history' | 'results'>('menu');
   const [settings, setSettings] = useState<GameSettings>({
@@ -44,7 +47,10 @@ function App() {
   const [timeLeft, setTimeLeft] = useState(settings.timeLimit);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [score, setScore] = useState(0);
-  const [gameHistory, setGameHistory] = useState<GameHistory[]>([]);
+  const [gameHistory, setGameHistory] = useState<GameHistory[]>(() => {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    return saved ? JSON.parse(saved) : [];
+  });
   const [currentGame, setCurrentGame] = useState<Round[]>([]);
   const [playerName, setPlayerName] = useState('');
   const [roomCode, setRoomCode] = useState('');
@@ -54,7 +60,11 @@ function App() {
   const [expandedGameId, setExpandedGameId] = useState<string | null>(null);
   const [isCreatingRoom, setIsCreatingRoom] = useState(false);
   
-  const { room, error, createRoom, joinRoom, leaveRoom, findRoomByCode, setPlayerReady, updateGameState } = useGameRoom(roomCode);
+  const { room, error, createRoom, joinRoom, leaveRoom, findRoomByCode, setPlayerReady, updateGameState, deleteRoom } = useGameRoom(roomCode);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(gameHistory));
+  }, [gameHistory]);
 
   useEffect(() => {
     if (room && room.status === 'playing' && gameState === 'waiting') {
@@ -69,6 +79,18 @@ function App() {
       });
     }
   }, [room, room?.status, gameState, settings]);
+
+  useEffect(() => {
+    if (room) {
+      const shouldDelete = 
+        room.players.length === 0 || 
+        (room.status === 'finished' && room.players.every(p => !p.isHost));
+      
+      if (shouldDelete) {
+        deleteRoom(room.code);
+      }
+    }
+  }, [room]);
 
   const handleCreateRoom = async () => {
     if (!playerName.trim()) {
@@ -128,70 +150,139 @@ function App() {
   };
 
   const generateLetter = () => {
+    if (!room?.seed) return 'A';
+    
     const letters = 'ABCDEFGHIJLMNOPRSTV';
     const usedLetters = currentGame.map(round => round.letter);
+    
+    const hash = Array.from(room.seed + currentRound).reduce(
+      (acc, char) => char.charCodeAt(0) + ((acc << 5) - acc), 0
+    );
+    
+    let attempts = 0;
     let newLetter;
+    
     do {
-      newLetter = letters[Math.floor(Math.random() * letters.length)];
-    } while (usedLetters.includes(newLetter));
+      const index = Math.abs((hash + attempts) % letters.length);
+      newLetter = letters[index];
+      attempts++;
+    } while (usedLetters.includes(newLetter) && attempts < letters.length);
+    
     return newLetter;
   };
 
   const startGame = async () => {
     if (!room) return;
     
+    const seed = Math.random().toString(36).substring(2);
     const newLetter = generateLetter();
+    
     await updateGameState({
       status: 'playing',
       currentRound: 1,
       currentLetter: newLetter,
       timeLeft: settings.timeLimit,
-      answers: {}
+      answers: {},
+      seed,
+      roundHistory: []
     });
   };
 
-  const handleInputChange = (category: string, value: string) => {
-    setAnswers(prev => ({ ...prev, [category]: value }));
-  };
-
-  const calculateScore = () => {
+  const calculateScore = (answers: Record<string, string>, letter: string) => {
     let roundScore = 0;
+    let validWords = 0;
+    
     Object.values(answers).forEach(answer => {
       if (answer.trim().toLowerCase().startsWith(letter.toLowerCase())) {
         roundScore += 10;
+        validWords++;
       }
     });
-    return roundScore;
+    
+    return { score: roundScore, validWords };
   };
 
-  const endRound = () => {
-    const roundScore = calculateScore();
+  const endRound = async () => {
+    if (!room) return;
+
+    const { score: roundScore, validWords } = calculateScore(answers, letter);
     const round: Round = {
       letter,
       answers: { ...answers },
       score: roundScore
     };
     
-    setCurrentGame(prev => [...prev, round]);
+    const newCurrentGame = [...currentGame, round];
+    setCurrentGame(newCurrentGame);
+    
+    const roundHistory: RoundHistory = {
+      letter,
+      playerAnswers: {
+        [playerName]: {
+          answers: { ...answers },
+          validWords,
+          score: roundScore
+        }
+      }
+    };
+    
+    const updatedHistory = [...(room.roundHistory || []), roundHistory];
+    
+    const updatedPlayers = room.players.map(p => {
+      if (p.name === playerName) {
+        const currentScore = p.score || 0;
+        const currentValidWords = p.validWords || 0;
+        return {
+          ...p,
+          score: currentScore + roundScore,
+          validWords: currentValidWords + validWords
+        };
+      }
+      return p;
+    });
     
     if (currentRound < settings.rounds) {
-      setCurrentRound(prev => prev + 1);
-      setLetter(generateLetter());
+      const newLetter = generateLetter();
+      const nextRound = currentRound + 1;
+      
+      await updateGameState({
+        currentRound: nextRound,
+        currentLetter: newLetter,
+        timeLeft: settings.timeLimit,
+        answers: {},
+        players: updatedPlayers,
+        roundHistory: updatedHistory
+      });
+      
+      setCurrentRound(nextRound);
+      setLetter(newLetter);
       setTimeLeft(settings.timeLimit);
       setAnswers({});
       settings.categories.forEach(cat => {
         setAnswers(prev => ({ ...prev, [cat.name]: '' }));
       });
     } else {
-      const totalScore = [...currentGame, round].reduce((sum, r) => sum + r.score, 0);
+      const totalScore = [...newCurrentGame].reduce((sum, r) => sum + r.score, 0);
       const gameRecord: GameHistory = {
         id: Date.now().toString(),
         date: new Date().toLocaleString(),
-        rounds: [...currentGame, round],
+        rounds: newCurrentGame,
         totalScore,
         settings: { ...settings }
       };
+      
       setGameHistory(prev => [gameRecord, ...prev]);
+      
+      await updateGameState({
+        status: 'finished',
+        currentRound: currentRound,
+        currentLetter: letter,
+        timeLeft: 0,
+        answers: {},
+        players: updatedPlayers,
+        roundHistory: updatedHistory
+      });
+      
       setGameState('results');
     }
   };
@@ -578,47 +669,13 @@ function App() {
 
   const renderResults = () => (
     <div className="min-h-screen bg-gradient-to-br from-indigo-900 to-purple-900 text-white p-8">
-      <div className="max-w-4xl mx-auto">
-        <h2 className="text-4xl font-bold mb-8 flex items-center justify-center">
-          <Trophy className="w-10 h-10 mr-4 text-yellow-400" />
-          Résultats de la partie
-        </h2>
-
-        <div className="bg-white/10 rounded-xl p-6 mb-8">
-          <div className="text-center mb-6">
-            <div className="text-6xl font-bold text-yellow-400 mb-2">
-              {currentGame.reduce((sum, round) => sum + round.score, 0)} points
-            </div>
-            <div className="text-xl text-white/70">Score total</div>
-          </div>
-
-          <div className="space-y-6">
-            {currentGame.map((round, index) => (
-              <div key={index} className="bg-white/5 rounded-lg p-4">
-                <div className="flex justify-between items-center mb-4">
-                  <div className="flex items-center">
-                    <div className="text-3xl font-bold mr-4">Lettre {round.letter}</div>
-                    <div className="text-xl text-yellow-400">{round.score} points</div>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                  {Object.entries(round.answers).map(([category, answer]) => {
-                    const categoryLabel = settings.categories.find(c => c.name === category)?.label;
-                    const isValid = answer.toLowerCase().startsWith(round.letter.toLowerCase());
-                    return (
-                      <div key={category} className="space-y-1">
-                        <div className="text-sm text-white/70">{categoryLabel}</div>
-                        <div className={`font-medium ${isValid ? 'text-green-400' : 'text-red-400'}`}>
-                          {answer || '-'}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+      <div className="max-w-4xl mx-auto space-y-8">
+        {room && (
+          <ScoreBoard
+            players={room.players}
+            roundHistory={room.roundHistory || []}
+          />
+        )}
 
         <div className="flex gap-4">
           <button
@@ -687,7 +744,7 @@ function App() {
                           <div className="text-yellow-400">{round.score} points</div>
                         </div>
                       </div>
-                      <div className="grid grid-cols-2  md:grid-cols-3 gap-4">
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                         {Object.entries(round.answers).map(([category, answer]) => {
                           const categoryLabel = game.settings.categories.find(c => c.name === category)?.label;
                           const isValid = answer.toLowerCase().startsWith(round.letter.toLowerCase());
