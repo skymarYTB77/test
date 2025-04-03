@@ -1,0 +1,35 @@
+{
+  "rules": {
+    "rooms": {
+      "$roomId": {
+        // Lecture autorisée si la salle existe
+        ".read": "data.exists()",
+        // Écriture autorisée pour créer une nouvelle salle
+        ".write": "!data.exists() || data.child('players').child('id').val() === auth.uid",
+        
+        // Validation des données de la salle
+        ".validate": "newData.hasChildren(['id', 'code', 'host', 'players', 'status', 'settings'])",
+        
+        "players": {
+          "$playerId": {
+            ".validate": "newData.hasChildren(['id', 'name', 'isHost', 'isReady'])",
+            "name": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 20" },
+            "isHost": { ".validate": "newData.isBoolean()" },
+            "isReady": { ".validate": "newData.isBoolean()" }
+          }
+        },
+        
+        "settings": {
+          ".validate": "newData.hasChildren(['timeLimit', 'maxPlayers', 'rounds', 'categories'])",
+          "timeLimit": { ".validate": "newData.isNumber() && newData.val() >= 10 && newData.val() <= 300" },
+          "maxPlayers": { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 27" },
+          "rounds": { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 10" }
+        },
+        
+        "status": {
+          ".validate": "newData.isString() && (newData.val() === 'waiting' || newData.val() === 'playing' || newData.val() === 'finished')"
+        }
+      }
+    }
+  }
+}

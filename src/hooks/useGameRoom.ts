@@ -27,7 +27,7 @@ export function useGameRoom(roomCode: string | null) {
     return () => unsubscribe();
   }, [roomCode]);
 
-  const createRoom = async (hostName: string, settings: GameRoom['settings']) => {
+  const createRoom = async (hostName: string, settings: GameRoom['settings']): Promise<string> => {
     try {
       const code = Math.random().toString(36).substring(2, 8).toUpperCase();
       const roomRef = ref(db, `rooms/${code}`);

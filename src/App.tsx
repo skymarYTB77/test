@@ -62,8 +62,10 @@ function App() {
     }
     try {
       const code = await createRoom(playerName, settings);
-      setRoomCode(code);
-      setGameState('waiting');
+      if (code) {
+        setRoomCode(code);
+        setGameState('waiting');
+      }
     } catch (err: any) {
       alert(err.message);
     }
@@ -300,7 +302,9 @@ function App() {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="bg-white/10 p-6 rounded-xl space-y-4">
-            <label className="block text-lg font-medium">Temps par manche</label>
+            <label className="block text-lg font-medium h-14 flex items-center">
+              Temps par manche
+            </label>
             <div className="flex items-center gap-4">
               <button
                 onClick={() => handleSettingChange('timeLimit', settings.timeLimit - 10)}
@@ -312,7 +316,7 @@ function App() {
                 type="text"
                 value={settings.timeLimit}
                 onChange={(e) => handleSettingChange('timeLimit', parseInt(e.target.value) || 60)}
-                className="w-20 px-4 py-2 rounded-lg bg-white/10 border border-white/20 text-white text-center"
+                className="w-24 px-4 py-2 rounded-lg bg-white/10 border border-white/20 text-white text-center"
               />
               <button
                 onClick={() => handleSettingChange('timeLimit', settings.timeLimit + 10)}
@@ -325,7 +329,9 @@ function App() {
           </div>
 
           <div className="bg-white/10 p-6 rounded-xl space-y-4">
-            <label className="block text-lg font-medium">Nombre de joueurs</label>
+            <label className="block text-lg font-medium h-14 flex items-center">
+              Nombre de joueurs
+            </label>
             <div className="flex items-center gap-4">
               <button
                 onClick={() => handleSettingChange('maxPlayers', settings.maxPlayers - 1)}
@@ -337,7 +343,7 @@ function App() {
                 type="text"
                 value={settings.maxPlayers}
                 onChange={(e) => handleSettingChange('maxPlayers', parseInt(e.target.value) || 1)}
-                className="w-20 px-4 py-2 rounded-lg bg-white/10 border border-white/20 text-white text-center"
+                className="w-24 px-4 py-2 rounded-lg bg-white/10 border border-white/20 text-white text-center"
               />
               <button
                 onClick={() => handleSettingChange('maxPlayers', settings.maxPlayers + 1)}
@@ -350,7 +356,9 @@ function App() {
           </div>
 
           <div className="bg-white/10 p-6 rounded-xl space-y-4">
-            <label className="block text-lg font-medium">Nombre de manches</label>
+            <label className="block text-lg font-medium h-14 flex items-center">
+              Nombre de manches
+            </label>
             <div className="flex items-center gap-4">
               <button
                 onClick={() => handleSettingChange('rounds', settings.rounds - 1)}
@@ -362,7 +370,7 @@ function App() {
                 type="text"
                 value={settings.rounds}
                 onChange={(e) => handleSettingChange('rounds', parseInt(e.target.value) || 1)}
-                className="w-20 px-4 py-2 rounded-lg bg-white/10 border border-white/20 text-white text-center"
+                className="w-24 px-4 py-2 rounded-lg bg-white/10 border border-white/20 text-white text-center"
               />
               <button
                 onClick={() => handleSettingChange('rounds', settings.rounds + 1)}
@@ -493,14 +501,14 @@ function App() {
   );
 
   const renderGame = () => (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-900 to-purple-900 text-white p-4">
-      <div className="max-w-6xl mx-auto">
+    <div className="min-h-screen bg-gradient-to-br from-indigo-900 to-purple-900 text-white p-8">
+      <div className="max-w-7xl mx-auto">
         <div className="flex justify-between items-center mb-8">
-          <div className="flex items-center space-x-4">
-            <div className="text-8xl font-bold bg-white/10 px-8 py-4 rounded-2xl">
+          <div className="flex items-center space-x-6">
+            <div className="text-8xl font-bold bg-white/10 px-10 py-6 rounded-2xl">
               {letter}
             </div>
-            <div className="space-y-2">
+            <div className="space-y-3">
               <div className="text-4xl font-bold flex items-center">
                 <Timer className="w-8 h-8 mr-3 text-red-400" />
                 <span className={timeLeft <= 10 ? 'text-red-400' : ''}>
@@ -514,24 +522,24 @@ function App() {
           </div>
           <button
             onClick={endRound}
-            className="bg-red-500 hover:bg-red-600 px-6 py-3 rounded-lg flex items-center space-x-2"
+            className="bg-red-500 hover:bg-red-600 px-8 py-4 rounded-lg flex items-center space-x-3 text-lg"
           >
-            <RefreshCw className="w-5 h-5" />
+            <RefreshCw className="w-6 h-6" />
             <span>Terminer la manche</span>
           </button>
         </div>
 
-        <div className="grid grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-8">
           {settings.categories.map(category => (
-            <div key={category.name} className="bg-white/10 rounded-xl p-6 space-y-3">
-              <label className="block text-xl font-medium">
+            <div key={category.name} className="bg-white/10 rounded-xl p-8 space-y-4 min-h-[200px]">
+              <label className="block text-2xl font-medium">
                 {category.label}
               </label>
               <input
                 type="text"
                 value={answers[category.name] || ''}
                 onChange={(e) => handleInputChange(category.name, e.target.value)}
-                className="w-full px-4 py-3 bg-white/5 border border-white/20 rounded-lg text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                className="w-full px-6 py-4 bg-white/5 border-2 border-white/20 rounded-lg text-xl text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent"
                 placeholder={`Un ${category.label.toLowerCase()} avec ${letter}...`}
               />
             </div>
