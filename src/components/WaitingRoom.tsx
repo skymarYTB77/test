@@ -1,5 +1,5 @@
 import React from 'react';
-import { Users, Crown, RefreshCw } from 'lucide-react';
+import { Users, Crown, RefreshCw, Copy } from 'lucide-react';
 import type { GameRoom } from '../types';
 
 type WaitingRoomProps = {
@@ -7,10 +7,18 @@ type WaitingRoomProps = {
   playerName: string;
   onStart: () => void;
   onLeave: () => void;
+  onReady: () => void;
 };
 
-export function WaitingRoom({ room, playerName, onStart, onLeave }: WaitingRoomProps) {
-  const isHost = room.players.find(p => p.name === playerName)?.isHost;
+export function WaitingRoom({ room, playerName, onStart, onLeave, onReady }: WaitingRoomProps) {
+  const currentPlayer = room.players.find(p => p.name === playerName);
+  const isHost = currentPlayer?.isHost;
+  const allPlayersReady = room.players.every(p => p.isReady);
+  const canStart = isHost && allPlayersReady && room.players.length > 1;
+
+  const copyRoomCode = () => {
+    navigator.clipboard.writeText(room.code);
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-900 to-purple-900 text-white p-8">
@@ -18,9 +26,13 @@ export function WaitingRoom({ room, playerName, onStart, onLeave }: WaitingRoomP
         <div className="bg-white/10 rounded-xl p-8 mb-8">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-3xl font-bold">Salon de jeu</h2>
-            <div className="text-xl bg-white/10 px-4 py-2 rounded-lg">
-              Code: <span className="font-mono font-bold">{room.code}</span>
-            </div>
+            <button 
+              onClick={copyRoomCode}
+              className="flex items-center gap-2 text-xl bg-white/10 px-4 py-2 rounded-lg hover:bg-white/20"
+            >
+              <span className="font-mono font-bold">{room.code}</span>
+              <Copy className="w-5 h-5" />
+            </button>
           </div>
 
           <div className="space-y-4">
@@ -66,15 +78,26 @@ export function WaitingRoom({ room, playerName, onStart, onLeave }: WaitingRoomP
           >
             Quitter le salon
           </button>
-          {isHost && (
+          {!currentPlayer?.isReady ? (
+            <button
+              onClick={onReady}
+              className="flex-1 bg-green-600 hover:bg-green-700 px-6 py-3 rounded-lg"
+            >
+              Je suis prêt
+            </button>
+          ) : isHost ? (
             <button
               onClick={onStart}
-              className="flex-1 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 px-6 py-3 rounded-lg flex items-center justify-center gap-2"
+              disabled={!canStart}
+              className={`flex-1 px-6 py-3 rounded-lg flex items-center justify-center gap-2
+                ${canStart 
+                  ? 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700' 
+                  : 'bg-gray-600 cursor-not-allowed'}`}
             >
               <RefreshCw className="w-5 h-5" />
               Lancer la partie
             </button>
-          )}
+          ) : null}
         </div>
       </div>
     </div>

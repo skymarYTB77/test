@@ -3,6 +3,7 @@ export type Player = {
   name: string;
   isHost: boolean;
   isReady: boolean;
+  answers?: Record<string, string>;
 };
 
 export type GameRoom = {
@@ -15,6 +16,7 @@ export type GameRoom = {
   currentRound?: number;
   currentLetter?: string;
   timeLeft?: number;
+  answers?: Record<string, Record<string, string>>;
 };
 
 export type Category = {

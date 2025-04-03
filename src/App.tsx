@@ -2,12 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Play, Timer, RefreshCw, Trophy, Users, Clock, Settings, ChevronLeft, Crown, Plus, Minus, Edit, Check, X, History, ChevronDown, ChevronUp } from 'lucide-react';
 import { useGameRoom } from './hooks/useGameRoom';
 import { WaitingRoom } from './components/WaitingRoom';
-import type { GameRoom } from './types';
-
-type Category = {
-  name: string;
-  label: string;
-};
+import type { GameRoom, Category, GameSettings } from './types';
 
 type Round = {
   letter: string;
@@ -23,14 +18,6 @@ type GameHistory = {
   settings: GameSettings;
 };
 
-type GameSettings = {
-  timeLimit: number;
-  maxPlayers: number;
-  rounds: number;
-  categories: Category[];
-  customCategories: Category[];
-};
-
 const DEFAULT_CATEGORIES: Category[] = [
   { name: 'pays', label: 'Pays' },
   { name: 'ville', label: 'Ville' },
@@ -44,7 +31,7 @@ const DEFAULT_CATEGORIES: Category[] = [
 ];
 
 function App() {
-  const [gameState, setGameState] = useState<'menu' | 'settings' | 'waiting' | 'playing' | 'history' | 'results'>('menu');
+  const [gameState, setGameState] = useState<'menu' | 'settings' | 'playing' | 'waiting' | 'history' | 'results'>('menu');
   const [settings, setSettings] = useState<GameSettings>({
     timeLimit: 60,
     maxPlayers: 4,
@@ -65,28 +52,57 @@ function App() {
   const [isAddingCategory, setIsAddingCategory] = useState(false);
   const [useCustomCategories, setUseCustomCategories] = useState(false);
   const [expandedGameId, setExpandedGameId] = useState<string | null>(null);
+  
+  const { room, error, createRoom, joinRoom, leaveRoom, findRoomByCode, setPlayerReady, updateGameState } = useGameRoom(roomCode);
 
-  const { room, createRoom, joinRoom, leaveRoom } = useGameRoom(roomCode);
-
-  const addCustomCategory = () => {
-    if (!newCategory.name || !newCategory.label) return;
-
-    setSettings(prev => ({
-      ...prev,
-      customCategories: [...prev.customCategories, {
-        name: newCategory.name.toLowerCase().replace(/\s+/g, '_'),
-        label: newCategory.label
-      }]
-    }));
-    setNewCategory({ name: '', label: '' });
-    setIsAddingCategory(false);
+  const handleCreateRoom = async () => {
+    if (!playerName) {
+      alert('Veuillez entrer votre pseudo');
+      return;
+    }
+    try {
+      const code = await createRoom(playerName, settings);
+      setRoomCode(code);
+      setGameState('waiting');
+    } catch (err: any) {
+      alert(err.message);
+    }
   };
 
-  const removeCustomCategory = (categoryName: string) => {
-    setSettings(prev => ({
-      ...prev,
-      customCategories: prev.customCategories.filter(cat => cat.name !== categoryName)
-    }));
+  const handleJoinRoom = async () => {
+    if (!playerName || !roomCode) {
+      alert('Veuillez entrer votre pseudo et le code du salon');
+      return;
+    }
+    try {
+      const foundRoom = await findRoomByCode(roomCode);
+      if (foundRoom.players.length >= foundRoom.settings.maxPlayers) {
+        alert('Le salon est complet');
+        return;
+      }
+      await joinRoom(playerName);
+      setGameState('waiting');
+    } catch (err: any) {
+      alert(err.message);
+    }
+  };
+
+  const handleLeaveRoom = async () => {
+    try {
+      await leaveRoom(playerName);
+      setRoomCode('');
+      setGameState('menu');
+    } catch (err: any) {
+      alert(err.message);
+    }
+  };
+
+  const handleReady = async () => {
+    try {
+      await setPlayerReady(playerName, true);
+    } catch (err: any) {
+      alert(err.message);
+    }
   };
 
   const generateLetter = () => {
@@ -99,35 +115,25 @@ function App() {
     return newLetter;
   };
 
-  const createNewGame = async () => {
-    if (!playerName) {
-      alert('Veuillez entrer votre pseudo');
-      return;
-    }
-
-    const gameSettings = {
-      ...settings,
-      categories: useCustomCategories ? settings.customCategories : settings.categories
-    };
-
-    try {
-      const code = await createRoom(playerName, gameSettings);
-      setRoomCode(code);
-      setGameState('waiting');
-    } catch (error) {
-      alert('Erreur lors de la création de la partie');
-    }
-  };
-
-  const startGame = () => {
+  const startGame = async () => {
+    if (!room) return;
+    
+    const newLetter = generateLetter();
+    await updateGameState({
+      status: 'playing',
+      currentRound: 1,
+      currentLetter: newLetter,
+      timeLeft: settings.timeLimit,
+      answers: {}
+    });
+    
     setCurrentGame([]);
     setCurrentRound(1);
-    setLetter(generateLetter());
+    setLetter(newLetter);
     setGameState('playing');
     setTimeLeft(settings.timeLimit);
     setAnswers({});
-    const activeCategories = useCustomCategories ? settings.customCategories : settings.categories;
-    activeCategories.forEach(cat => {
+    settings.categories.forEach(cat => {
       setAnswers(prev => ({ ...prev, [cat.name]: '' }));
     });
   };
@@ -161,8 +167,7 @@ function App() {
       setLetter(generateLetter());
       setTimeLeft(settings.timeLimit);
       setAnswers({});
-      const activeCategories = useCustomCategories ? settings.customCategories : settings.categories;
-      activeCategories.forEach(cat => {
+      settings.categories.forEach(cat => {
         setAnswers(prev => ({ ...prev, [cat.name]: '' }));
       });
     } else {
@@ -191,6 +196,28 @@ function App() {
     setSettings(prev => ({ ...prev, [setting]: newValue }));
   };
 
+  const addCustomCategory = () => {
+    if (!newCategory.name || !newCategory.label) {
+      alert('Veuillez remplir tous les champs');
+      return;
+    }
+    setSettings(prev => ({
+      ...prev,
+      customCategories: [...prev.customCategories, newCategory],
+      categories: [...prev.categories, newCategory]
+    }));
+    setNewCategory({ name: '', label: '' });
+    setIsAddingCategory(false);
+  };
+
+  const removeCustomCategory = (categoryName: string) => {
+    setSettings(prev => ({
+      ...prev,
+      customCategories: prev.customCategories.filter(c => c.name !== categoryName),
+      categories: prev.categories.filter(c => c.name !== categoryName)
+    }));
+  };
+
   useEffect(() => {
     let timer: NodeJS.Timeout;
     if (gameState === 'playing' && timeLeft > 0) {
@@ -202,32 +229,6 @@ function App() {
     }
     return () => clearInterval(timer);
   }, [gameState, timeLeft]);
-
-  const handleJoinRoom = async () => {
-    if (!playerName || !roomCode) {
-      alert('Veuillez entrer votre pseudo et le code de la salle');
-      return;
-    }
-
-    try {
-      await joinRoom(playerName);
-      setGameState('waiting');
-    } catch (error) {
-      alert('Erreur lors de la connexion au salon');
-    }
-  };
-
-  const handleLeaveRoom = async () => {
-    if (!playerName) return;
-
-    try {
-      await leaveRoom(playerName);
-      setRoomCode('');
-      setGameState('menu');
-    } catch (error) {
-      alert('Erreur lors de la déconnexion du salon');
-    }
-  };
 
   const renderMenu = () => (
     <div className="flex flex-col items-center justify-center h-screen space-y-8 bg-gradient-to-br from-indigo-900 to-purple-900 text-white p-4">
@@ -250,7 +251,7 @@ function App() {
             type="text"
             placeholder="Code de la salle"
             value={roomCode}
-            onChange={(e) => setRoomCode(e.target.value)}
+            onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
             className="flex-1 px-4 py-3 rounded-lg bg-white/10 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-indigo-400"
           />
           <button 
@@ -267,7 +268,7 @@ function App() {
           className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white px-8 py-4 rounded-lg text-xl font-semibold flex items-center justify-center space-x-3"
         >
           <Play className="w-6 h-6" />
-          <span>Créer une partie</span>
+          <span>Nouvelle Partie</span>
         </button>
 
         <button
@@ -481,7 +482,7 @@ function App() {
         </div>
 
         <button
-          onClick={createNewGame}
+          onClick={handleCreateRoom}
           className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white px-8 py-4 rounded-lg text-xl font-semibold flex items-center justify-center space-x-3 mt-8"
         >
           <Play className="w-6 h-6" />
@@ -521,7 +522,7 @@ function App() {
         </div>
 
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-6">
-          {(useCustomCategories ? settings.customCategories : settings.categories).map(category => (
+          {settings.categories.map(category => (
             <div key={category.name} className="bg-white/10 rounded-xl p-6 space-y-3">
               <label className="block text-xl font-medium">
                 {category.label}
@@ -567,8 +568,7 @@ function App() {
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                   {Object.entries(round.answers).map(([category, answer]) => {
-                    const categoryLabel = (useCustomCategories ? settings.customCategories : settings.categories)
-                      .find(c => c.name === category)?.label;
+                    const categoryLabel = settings.categories.find(c => c.name === category)?.label;
                     const isValid = answer.toLowerCase().startsWith(round.letter.toLowerCase());
                     return (
                       <div key={category} className="space-y-1">
@@ -687,6 +687,7 @@ function App() {
           playerName={playerName}
           onStart={startGame}
           onLeave={handleLeaveRoom}
+          onReady={handleReady}
         />
       )}
       {gameState === 'playing' && renderGame()}
