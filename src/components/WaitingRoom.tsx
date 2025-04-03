@@ -54,7 +54,7 @@ export function WaitingRoom({ room, playerName, onStart, onLeave, onReady }: Wai
             <div className="space-y-3">
               {room.players.map((player) => (
                 <div
-                  key={player.name}
+                  key={player.id}
                   className={`flex items-center justify-between ${
                     player.name === playerName ? 'bg-white/20' : 'bg-white/10'
                   } p-4 rounded-lg transition-colors duration-200`}

@@ -56,6 +56,20 @@ function App() {
   
   const { room, error, createRoom, joinRoom, leaveRoom, findRoomByCode, setPlayerReady, updateGameState } = useGameRoom(roomCode);
 
+  useEffect(() => {
+    if (room && room.status === 'playing' && gameState === 'waiting') {
+      setCurrentGame([]);
+      setCurrentRound(room.currentRound || 1);
+      setLetter(room.currentLetter || '');
+      setGameState('playing');
+      setTimeLeft(settings.timeLimit);
+      setAnswers({});
+      settings.categories.forEach(cat => {
+        setAnswers(prev => ({ ...prev, [cat.name]: '' }));
+      });
+    }
+  }, [room, room?.status, gameState, settings]);
+
   const handleCreateRoom = async () => {
     if (!playerName.trim()) {
       alert('Veuillez entrer votre pseudo');
@@ -133,16 +147,6 @@ function App() {
       currentLetter: newLetter,
       timeLeft: settings.timeLimit,
       answers: {}
-    });
-    
-    setCurrentGame([]);
-    setCurrentRound(1);
-    setLetter(newLetter);
-    setGameState('playing');
-    setTimeLeft(settings.timeLimit);
-    setAnswers({});
-    settings.categories.forEach(cat => {
-      setAnswers(prev => ({ ...prev, [cat.name]: '' }));
     });
   };
 
@@ -683,7 +687,7 @@ function App() {
                           <div className="text-yellow-400">{round.score} points</div>
                         </div>
                       </div>
-                      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                      <div className="grid grid-cols-2  md:grid-cols-3 gap-4">
                         {Object.entries(round.answers).map(([category, answer]) => {
                           const categoryLabel = game.settings.categories.find(c => c.name === category)?.label;
                           const isValid = answer.toLowerCase().startsWith(round.letter.toLowerCase());

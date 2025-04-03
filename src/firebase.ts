@@ -1,10 +1,9 @@
 import { initializeApp } from 'firebase/app';
-import { getDatabase } from 'firebase/database';
+import { getFirestore } from 'firebase/firestore';
 
 const firebaseConfig = {
   apiKey: "AIzaSyB--8OpttEdDe3okIMgqs7BaVSE1pdzwrs",
   authDomain: "petit-bac-3ec1c.firebaseapp.com",
-  databaseURL: "https://petit-bac-3ec1c-default-rtdb.europe-west1.firebasedatabase.app",
   projectId: "petit-bac-3ec1c",
   storageBucket: "petit-bac-3ec1c.appspot.com",
   messagingSenderId: "981068655131",
@@ -12,4 +11,4 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
-export const db = getDatabase(app);
+export const db = getFirestore(app);
