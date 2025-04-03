@@ -8,12 +8,17 @@ export function useGameRoom(roomCode: string | null) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!roomCode) return;
+    if (!roomCode) {
+      setRoom(null);
+      setError(null);
+      return;
+    }
 
     const roomRef = ref(db, `rooms/${roomCode}`);
     const unsubscribe = onValue(roomRef, (snapshot) => {
       if (snapshot.exists()) {
-        setRoom(snapshot.val() as GameRoom);
+        const roomData = snapshot.val() as GameRoom;
+        setRoom(roomData);
         setError(null);
       } else {
         setRoom(null);
@@ -24,17 +29,35 @@ export function useGameRoom(roomCode: string | null) {
       setError('Erreur lors de la récupération du salon');
     });
 
-    return () => unsubscribe();
+    return () => {
+      unsubscribe();
+      setRoom(null);
+      setError(null);
+    };
   }, [roomCode]);
 
   const createRoom = async (hostName: string, settings: GameRoom['settings']): Promise<string> => {
+    if (!hostName.trim()) {
+      throw new Error('Le nom du joueur est requis');
+    }
+
     try {
-      const code = Math.random().toString(36).substring(2, 8).toUpperCase();
+      // Générer un code unique
+      let code: string;
+      let isUnique = false;
+      
+      while (!isUnique) {
+        code = Math.random().toString(36).substring(2, 8).toUpperCase();
+        const roomRef = ref(db, `rooms/${code}`);
+        const snapshot = await get(roomRef);
+        isUnique = !snapshot.exists();
+      }
+
       const roomRef = ref(db, `rooms/${code}`);
       
       const newRoom: GameRoom = {
         id: code,
-        code,
+        code: code,
         host: hostName,
         players: [{
           id: hostName,
@@ -58,7 +81,17 @@ export function useGameRoom(roomCode: string | null) {
   };
 
   const joinRoom = async (playerName: string) => {
-    if (!room || !roomCode) return;
+    if (!room || !roomCode) {
+      throw new Error('Aucun salon sélectionné');
+    }
+
+    if (!playerName.trim()) {
+      throw new Error('Le nom du joueur est requis');
+    }
+
+    if (room.players.some(p => p.name === playerName)) {
+      throw new Error('Ce nom est déjà utilisé dans le salon');
+    }
 
     try {
       const newPlayer: Player = {
@@ -79,7 +112,9 @@ export function useGameRoom(roomCode: string | null) {
   };
 
   const leaveRoom = async (playerName: string) => {
-    if (!room || !roomCode) return;
+    if (!room || !roomCode) {
+      throw new Error('Aucun salon sélectionné');
+    }
 
     try {
       const roomRef = ref(db, `rooms/${roomCode}`);
@@ -109,7 +144,9 @@ export function useGameRoom(roomCode: string | null) {
   };
 
   const setPlayerReady = async (playerName: string, isReady: boolean) => {
-    if (!room || !roomCode) return;
+    if (!room || !roomCode) {
+      throw new Error('Aucun salon sélectionné');
+    }
 
     try {
       const roomRef = ref(db, `rooms/${roomCode}`);
@@ -127,6 +164,10 @@ export function useGameRoom(roomCode: string | null) {
   };
 
   const findRoomByCode = async (code: string) => {
+    if (!code.trim()) {
+      throw new Error('Le code du salon est requis');
+    }
+
     try {
       const roomRef = ref(db, `rooms/${code}`);
       const snapshot = await get(roomRef);
@@ -143,7 +184,9 @@ export function useGameRoom(roomCode: string | null) {
   };
 
   const updateGameState = async (updates: Partial<GameRoom>) => {
-    if (!roomCode) return;
+    if (!roomCode) {
+      throw new Error('Aucun salon sélectionné');
+    }
 
     try {
       const roomRef = ref(db, `rooms/${roomCode}`);

@@ -52,14 +52,17 @@ function App() {
   const [isAddingCategory, setIsAddingCategory] = useState(false);
   const [useCustomCategories, setUseCustomCategories] = useState(false);
   const [expandedGameId, setExpandedGameId] = useState<string | null>(null);
+  const [isCreatingRoom, setIsCreatingRoom] = useState(false);
   
   const { room, error, createRoom, joinRoom, leaveRoom, findRoomByCode, setPlayerReady, updateGameState } = useGameRoom(roomCode);
 
   const handleCreateRoom = async () => {
-    if (!playerName) {
+    if (!playerName.trim()) {
       alert('Veuillez entrer votre pseudo');
       return;
     }
+
+    setIsCreatingRoom(true);
     try {
       const code = await createRoom(playerName, settings);
       if (code) {
@@ -68,14 +71,17 @@ function App() {
       }
     } catch (err: any) {
       alert(err.message);
+    } finally {
+      setIsCreatingRoom(false);
     }
   };
 
   const handleJoinRoom = async () => {
-    if (!playerName || !roomCode) {
+    if (!playerName.trim() || !roomCode.trim()) {
       alert('Veuillez entrer votre pseudo et le code du salon');
       return;
     }
+
     try {
       const foundRoom = await findRoomByCode(roomCode);
       if (foundRoom.players.length >= foundRoom.settings.maxPlayers) {
@@ -246,6 +252,7 @@ function App() {
           value={playerName}
           onChange={(e) => setPlayerName(e.target.value)}
           className="w-full px-4 py-3 rounded-lg bg-white/10 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+          maxLength={20}
         />
 
         <div className="flex gap-4">
@@ -255,10 +262,11 @@ function App() {
             value={roomCode}
             onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
             className="flex-1 px-4 py-3 rounded-lg bg-white/10 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+            maxLength={6}
           />
           <button 
             onClick={handleJoinRoom}
-            className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 rounded-lg flex items-center gap-2"
+            className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 rounded-lg flex items-center gap-2 transition-colors duration-200"
           >
             <Users className="w-5 h-5" />
             Rejoindre
@@ -267,7 +275,7 @@ function App() {
 
         <button
           onClick={() => setGameState('settings')}
-          className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white px-8 py-4 rounded-lg text-xl font-semibold flex items-center justify-center space-x-3"
+          className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white px-8 py-4 rounded-lg text-xl font-semibold flex items-center justify-center space-x-3 transition-colors duration-200"
         >
           <Play className="w-6 h-6" />
           <span>Nouvelle Partie</span>
@@ -275,7 +283,7 @@ function App() {
 
         <button
           onClick={() => setGameState('history')}
-          className="w-full bg-white/10 hover:bg-white/20 px-8 py-4 rounded-lg text-lg font-semibold flex items-center justify-center space-x-3"
+          className="w-full bg-white/10 hover:bg-white/20 px-8 py-4 rounded-lg text-lg font-semibold flex items-center justify-center space-x-3 transition-colors duration-200"
         >
           <History className="w-6 h-6" />
           <span>Historique</span>
@@ -388,13 +396,13 @@ function App() {
           <div className="flex gap-4 mb-4">
             <button
               onClick={() => setUseCustomCategories(false)}
-              className={`flex-1 py-3 px-4 rounded-lg ${!useCustomCategories ? 'bg-indigo-600' : 'bg-white/10 hover:bg-white/20'}`}
+              className={`flex-1 py-3 px-4 rounded-lg transition-colors duration-200 ${!useCustomCategories ? 'bg-indigo-600' : 'bg-white/10 hover:bg-white/20'}`}
             >
               Catégories par défaut
             </button>
             <button
               onClick={() => setUseCustomCategories(true)}
-              className={`flex-1 py-3 px-4 rounded-lg ${useCustomCategories ? 'bg-indigo-600' : 'bg-white/10 hover:bg-white/20'}`}
+              className={`flex-1 py-3 px-4 rounded-lg transition-colors duration-200 ${useCustomCategories ? 'bg-indigo-600' : 'bg-white/10 hover:bg-white/20'}`}
             >
               Catégories personnalisées
             </button>
@@ -427,6 +435,7 @@ function App() {
                     value={newCategory.name}
                     onChange={(e) => setNewCategory(prev => ({ ...prev, name: e.target.value }))}
                     className="w-full px-4 py-2 rounded-lg bg-white/5 border border-white/20"
+                    maxLength={20}
                   />
                   <input
                     type="text"
@@ -434,18 +443,19 @@ function App() {
                     value={newCategory.label}
                     onChange={(e) => setNewCategory(prev => ({ ...prev, label: e.target.value }))}
                     className="w-full px-4 py-2 rounded-lg bg-white/5 border border-white/20"
+                    maxLength={30}
                   />
                   <div className="flex gap-2">
                     <button
                       onClick={addCustomCategory}
-                      className="flex-1 py-2 rounded-lg bg-green-600 hover:bg-green-700 flex items-center justify-center gap-2"
+                      className="flex-1 py-2 rounded-lg bg-green-600 hover:bg-green-700 flex items-center justify-center gap-2 transition-colors duration-200"
                     >
                       <Check className="w-4 h-4" />
                       Ajouter
                     </button>
                     <button
                       onClick={() => setIsAddingCategory(false)}
-                      className="flex-1 py-2 rounded-lg bg-red-600 hover:bg-red-700 flex items-center justify-center gap-2"
+                      className="flex-1 py-2 rounded-lg bg-red-600 hover:bg-red-700 flex items-center justify-center gap-2 transition-colors duration-200"
                     >
                       <X className="w-4 h-4" />
                       Annuler
@@ -455,7 +465,7 @@ function App() {
               ) : (
                 <button
                   onClick={() => setIsAddingCategory(true)}
-                  className="w-full py-3 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center gap-2"
+                  className="w-full py-3 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center gap-2 transition-colors duration-200"
                 >
                   <Plus className="w-5 h-5" />
                   Ajouter une catégorie
@@ -476,7 +486,7 @@ function App() {
                         : [...prev.categories, category],
                     }));
                   }}
-                  className={`py-3 px-4 rounded-lg text-left ${
+                  className={`py-3 px-4 rounded-lg text-left transition-colors duration-200 ${
                     settings.categories.some(c => c.name === category.name)
                       ? 'bg-indigo-600'
                       : 'bg-white/10 hover:bg-white/20'
@@ -491,10 +501,22 @@ function App() {
 
         <button
           onClick={handleCreateRoom}
-          className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white px-8 py-4 rounded-lg text-xl font-semibold flex items-center justify-center space-x-3 mt-8"
+          disabled={isCreatingRoom}
+          className={`w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white px-8 py-4 rounded-lg text-xl font-semibold flex items-center justify-center space-x-3 transition-all duration-200 ${
+            isCreatingRoom ? 'opacity-75 cursor-not-allowed' : ''
+          }`}
         >
-          <Play className="w-6 h-6" />
-          <span>Créer la partie</span>
+          {isCreatingRoom ? (
+            <>
+              <RefreshCw className="w-6 h-6 animate-spin" />
+              <span>Création en cours...</span>
+            </>
+          ) : (
+            <>
+              <Play className="w-6 h-6" />
+              <span>Créer la partie</span>
+            </>
+          )}
         </button>
       </div>
     </div>
@@ -522,7 +544,7 @@ function App() {
           </div>
           <button
             onClick={endRound}
-            className="bg-red-500 hover:bg-red-600 px-8 py-4 rounded-lg flex items-center space-x-3 text-lg"
+            className="bg-red-500 hover:bg-red-600 px-8 py-4 rounded-lg flex items-center space-x-3 text-lg transition-colors duration-200"
           >
             <RefreshCw className="w-6 h-6" />
             <span>Terminer la manche</span>
@@ -539,8 +561,9 @@ function App() {
                 type="text"
                 value={answers[category.name] || ''}
                 onChange={(e) => handleInputChange(category.name, e.target.value)}
-                className="w-full px-6 py-4 bg-white/5 border-2 border-white/20 rounded-lg text-xl text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent"
+                className="w-full px-6 py-4 bg-white/5 border-2 border-white/20 rounded-lg text-xl text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent transition-all duration-200"
                 placeholder={`Un ${category.label.toLowerCase()} avec ${letter}...`}
+                maxLength={50}
               />
             </div>
           ))}
@@ -596,14 +619,14 @@ function App() {
         <div className="flex gap-4">
           <button
             onClick={() => setGameState('menu')}
-            className="flex-1 bg-white/10 hover:bg-white/20 px-6 py-3 rounded-lg flex items-center justify-center gap-2"
+            className="flex-1 bg-white/10 hover:bg-white/20 px-6 py-3 rounded-lg flex items-center justify-center gap-2 transition-colors duration-200"
           >
             <ChevronLeft className="w-5 h-5" />
             Menu principal
           </button>
           <button
             onClick={startGame}
-            className="flex-1 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 px-6 py-3 rounded-lg flex items-center justify-center gap-2"
+            className="flex-1 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 px-6 py-3 rounded-lg flex items-center justify-center gap-2 transition-colors duration-200"
           >
             <RefreshCw className="w-5 h-5" />
             Nouvelle partie
@@ -634,7 +657,7 @@ function App() {
             <div key={game.id} className="bg-white/10 rounded-xl overflow-hidden">
               <button
                 onClick={() => setExpandedGameId(expandedGameId === game.id ? null : game.id)}
-                className="w-full px-6 py-4 flex items-center justify-between hover:bg-white/5"
+                className="w-full px-6 py-4 flex items-center justify-between hover:bg-white/5 transition-colors duration-200"
               >
                 <div className="flex items-center gap-4">
                   <Trophy className="w-6 h-6 text-yellow-400" />
