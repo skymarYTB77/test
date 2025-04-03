@@ -149,6 +149,10 @@ function App() {
     }
   };
 
+  const handleInputChange = (category: string, value: string) => {
+    setAnswers(prev => ({ ...prev, [category]: value }));
+  };
+
   const generateLetter = () => {
     if (!room?.seed) return 'A';
     
@@ -177,6 +181,13 @@ function App() {
     const seed = Math.random().toString(36).substring(2);
     const newLetter = generateLetter();
     
+    const updatedPlayers = room.players.map(p => ({
+      ...p,
+      hasValidatedRound: false,
+      score: 0,
+      validWords: 0
+    }));
+    
     await updateGameState({
       status: 'playing',
       currentRound: 1,
@@ -184,7 +195,8 @@ function App() {
       timeLeft: settings.timeLimit,
       answers: {},
       seed,
-      roundHistory: []
+      roundHistory: [],
+      players: updatedPlayers
     });
   };
 
@@ -200,6 +212,18 @@ function App() {
     });
     
     return { score: roundScore, validWords };
+  };
+
+  const validateRound = async () => {
+    if (!room) return;
+
+    const updatedPlayers = room.players.map(p => 
+      p.name === playerName ? { ...p, hasValidatedRound: true } : p
+    );
+
+    await updateGameState({
+      players: updatedPlayers
+    });
   };
 
   const endRound = async () => {
@@ -235,10 +259,14 @@ function App() {
         return {
           ...p,
           score: currentScore + roundScore,
-          validWords: currentValidWords + validWords
+          validWords: currentValidWords + validWords,
+          hasValidatedRound: false
         };
       }
-      return p;
+      return {
+        ...p,
+        hasValidatedRound: false
+      };
     });
     
     if (currentRound < settings.rounds) {
@@ -328,10 +356,19 @@ function App() {
         setTimeLeft(prev => prev - 1);
       }, 1000);
     } else if (timeLeft === 0 && gameState === 'playing') {
-      endRound();
+      validateRound();
     }
     return () => clearInterval(timer);
   }, [gameState, timeLeft]);
+
+  useEffect(() => {
+    if (room && gameState === 'playing') {
+      const allPlayersValidated = room.players.every(p => p.hasValidatedRound);
+      if (allPlayersValidated) {
+        endRound();
+      }
+    }
+  }, [room?.players]);
 
   const renderMenu = () => (
     <div className="flex flex-col items-center justify-center h-screen space-y-8 bg-gradient-to-br from-indigo-900 to-purple-900 text-white p-4">
@@ -637,13 +674,15 @@ function App() {
               </div>
             </div>
           </div>
-          <button
-            onClick={endRound}
-            className="bg-red-500 hover:bg-red-600 px-8 py-4 rounded-lg flex items-center space-x-3 text-lg transition-colors duration-200"
-          >
-            <RefreshCw className="w-6 h-6" />
-            <span>Terminer la manche</span>
-          </button>
+          {!room?.players.find(p => p.name === playerName)?.hasValidatedRound && (
+            <button
+              onClick={validateRound}
+              className="bg-green-500 hover:bg-green-600 px-8 py-4 rounded-lg flex items-center space-x-3 text-lg transition-colors duration-200"
+            >
+              <Check className="w-6 h-6" />
+              <span>Valider mes réponses</span>
+            </button>
+          )}
         </div>
 
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-8">
@@ -659,10 +698,35 @@ function App() {
                 className="w-full px-6 py-4 bg-white/5 border-2 border-white/20 rounded-lg text-xl text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent transition-all duration-200"
                 placeholder={`Un ${category.label.toLowerCase()} avec ${letter}...`}
                 maxLength={50}
+                disabled={room?.players.find(p => p.name === playerName)?.hasValidatedRound}
               />
             </div>
           ))}
         </div>
+
+        {room && (
+          <div className="mt-8 bg-white/10 rounded-xl p-6">
+            <h3 className="text-xl font-medium mb-4">État des joueurs</h3>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {room.players.map(player => (
+                <div
+                  key={player.id}
+                  className={`p-4 rounded-lg ${
+                    player.hasValidatedRound ? 'bg-green-500/20' : 'bg-white/5'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    {player.isHost && <Crown className="w-4 h-4 text-yellow-400" />}
+                    <span>{player.name}</span>
+                  </div>
+                  <div className="text-sm mt-1">
+                    {player.hasValidatedRound ? 'A validé' : 'En cours...'}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -686,7 +750,22 @@ function App() {
             Menu principal
           </button>
           <button
-            onClick={startGame}
+            onClick={() => {
+              if (room) {
+                setGameState('waiting');
+                const updatedPlayers = room.players.map(p => ({
+                  ...p,
+                  isReady: false,
+                  hasValidatedRound: false,
+                  score: 0,
+                  validWords: 0
+                }));
+                updateGameState({
+                  status: 'waiting',
+                  players: updatedPlayers
+                });
+              }
+            }}
             className="flex-1 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 px-6 py-3 rounded-lg flex items-center justify-center gap-2 transition-colors duration-200"
           >
             <RefreshCw className="w-5 h-5" />

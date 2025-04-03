@@ -6,6 +6,7 @@ export type Player = {
   answers?: Record<string, string>;
   score?: number;
   validWords?: number;
+  hasValidatedRound?: boolean;
 };
 
 export type GameRoom = {
