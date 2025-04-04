@@ -1,14 +1,15 @@
 import React, { useState } from 'react';
 import { Trophy, Crown, Medal } from 'lucide-react';
-import type { Player, RoundHistory } from '../types';
+import type { Player, RoundHistory, Category } from '../types';
 import { PlayerHistoryModal } from './PlayerHistoryModal';
 
 type ScoreBoardProps = {
   players: Player[];
   roundHistory: RoundHistory[];
+  categories: Category[];
 };
 
-export function ScoreBoard({ players, roundHistory }: ScoreBoardProps) {
+export function ScoreBoard({ players, roundHistory, categories }: ScoreBoardProps) {
   const [selectedPlayer, setSelectedPlayer] = useState<string | null>(null);
 
   const sortedPlayers = [...players].sort((a, b) => {
@@ -75,6 +76,7 @@ export function ScoreBoard({ players, roundHistory }: ScoreBoardProps) {
         <PlayerHistoryModal
           playerName={selectedPlayer}
           roundHistory={roundHistory}
+          categories={categories}
           onClose={() => setSelectedPlayer(null)}
         />
       )}

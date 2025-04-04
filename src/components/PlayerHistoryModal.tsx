@@ -1,14 +1,20 @@
 import React from 'react';
 import { X } from 'lucide-react';
-import type { RoundHistory } from '../types';
+import type { RoundHistory, Category } from '../types';
 
 type PlayerHistoryModalProps = {
   playerName: string;
   roundHistory: RoundHistory[];
+  categories: Category[];
   onClose: () => void;
 };
 
-export function PlayerHistoryModal({ playerName, roundHistory, onClose }: PlayerHistoryModalProps) {
+export function PlayerHistoryModal({ playerName, roundHistory, categories, onClose }: PlayerHistoryModalProps) {
+  const getCategoryLabel = (categoryName: string): string => {
+    const category = categories.find(c => c.name === categoryName);
+    return category?.label || categoryName;
+  };
+
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
       <div className="bg-white/10 backdrop-blur-xl rounded-xl w-full max-w-2xl max-h-[80vh] overflow-hidden">
@@ -45,7 +51,7 @@ export function PlayerHistoryModal({ playerName, roundHistory, onClose }: Player
                       const isValid = answer.toLowerCase().startsWith(round.letter.toLowerCase());
                       return (
                         <div key={category} className="space-y-1">
-                          <div className="text-sm text-white/70">{category}</div>
+                          <div className="text-sm text-white/70">{getCategoryLabel(category)}</div>
                           <div className={`font-medium ${isValid ? 'text-green-400' : 'text-red-400'}`}>
                             {answer || '-'}
                           </div>

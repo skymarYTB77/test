@@ -7,7 +7,8 @@ import {
   setDoc, 
   updateDoc, 
   getDoc,
-  deleteDoc
+  deleteDoc,
+  runTransaction
 } from 'firebase/firestore';
 import type { GameRoom, Player } from '../types';
 
@@ -77,8 +78,10 @@ export function useGameRoom(roomCode: string | null) {
         status: 'waiting',
         settings,
         currentRound: 0,
-        timeLeft: settings.timeLimit,
-        answers: {}
+        startTime: null,
+        endTime: null,
+        answers: {},
+        bannedPlayers: []
       };
 
       await setDoc(doc(db, 'games', code), newRoom);
@@ -100,6 +103,10 @@ export function useGameRoom(roomCode: string | null) {
 
     if (room.players.some(p => p.name === playerName)) {
       throw new Error('Ce nom est déjà utilisé dans le salon');
+    }
+
+    if (room.bannedPlayers?.includes(playerName)) {
+      throw new Error('Vous avez été banni de ce salon');
     }
 
     try {
@@ -151,6 +158,61 @@ export function useGameRoom(roomCode: string | null) {
     }
   };
 
+  const kickPlayer = async (playerName: string) => {
+    if (!room || !roomCode) {
+      throw new Error('Aucun salon sélectionné');
+    }
+
+    try {
+      const remainingPlayers = room.players.filter(p => p.name !== playerName);
+      await updateDoc(doc(db, 'games', roomCode), {
+        players: remainingPlayers
+      });
+    } catch (err) {
+      console.error('Error kicking player:', err);
+      throw new Error('Erreur lors de l\'exclusion du joueur');
+    }
+  };
+
+  const banPlayer = async (playerName: string) => {
+    if (!room || !roomCode) {
+      throw new Error('Aucun salon sélectionné');
+    }
+
+    try {
+      const remainingPlayers = room.players.filter(p => p.name !== playerName);
+      const bannedPlayers = [...(room.bannedPlayers || []), playerName];
+      await updateDoc(doc(db, 'games', roomCode), {
+        players: remainingPlayers,
+        bannedPlayers
+      });
+    } catch (err) {
+      console.error('Error banning player:', err);
+      throw new Error('Erreur lors du bannissement du joueur');
+    }
+  };
+
+  const transferHost = async (newHostName: string) => {
+    if (!room || !roomCode) {
+      throw new Error('Aucun salon sélectionné');
+    }
+
+    try {
+      const updatedPlayers = room.players.map(p => ({
+        ...p,
+        isHost: p.name === newHostName
+      }));
+
+      await updateDoc(doc(db, 'games', roomCode), {
+        host: newHostName,
+        players: updatedPlayers
+      });
+    } catch (err) {
+      console.error('Error transferring host:', err);
+      throw new Error('Erreur lors du transfert du statut d\'hôte');
+    }
+  };
+
   const setPlayerReady = async (playerName: string, isReady: boolean) => {
     if (!room || !roomCode) {
       throw new Error('Aucun salon sélectionné');
@@ -195,7 +257,26 @@ export function useGameRoom(roomCode: string | null) {
     }
 
     try {
-      await updateDoc(doc(db, 'games', roomCode), updates);
+      await runTransaction(db, async (transaction) => {
+        const roomRef = doc(db, 'games', roomCode);
+        const roomDoc = await transaction.get(roomRef);
+        
+        if (!roomDoc.exists()) {
+          throw new Error('Salon introuvable');
+        }
+
+        const currentRoom = roomDoc.data() as GameRoom;
+        
+        // Vérifier si tous les joueurs ont validé avant de passer à la manche suivante
+        if (updates.currentRound && updates.currentRound > (currentRoom.currentRound || 0)) {
+          const allPlayersValidated = currentRoom.players.every(p => p.hasValidatedRound);
+          if (!allPlayersValidated) {
+            throw new Error('Tous les joueurs n\'ont pas validé leurs réponses');
+          }
+        }
+
+        transaction.update(roomRef, updates);
+      });
     } catch (err) {
       console.error('Error updating game state:', err);
       throw new Error('Erreur lors de la mise à jour du jeu');
@@ -217,6 +298,9 @@ export function useGameRoom(roomCode: string | null) {
     createRoom,
     joinRoom,
     leaveRoom,
+    kickPlayer,
+    banPlayer,
+    transferHost,
     setPlayerReady,
     findRoomByCode,
     updateGameState,

@@ -44,7 +44,6 @@ function App() {
   });
   const [currentRound, setCurrentRound] = useState(1);
   const [letter, setLetter] = useState<string>('');
-  const [timeLeft, setTimeLeft] = useState(settings.timeLimit);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [score, setScore] = useState(0);
   const [gameHistory, setGameHistory] = useState<GameHistory[]>(() => {
@@ -60,7 +59,28 @@ function App() {
   const [expandedGameId, setExpandedGameId] = useState<string | null>(null);
   const [isCreatingRoom, setIsCreatingRoom] = useState(false);
   
-  const { room, error, createRoom, joinRoom, leaveRoom, findRoomByCode, setPlayerReady, updateGameState, deleteRoom } = useGameRoom(roomCode);
+  const { 
+    room, 
+    error, 
+    createRoom, 
+    joinRoom, 
+    leaveRoom, 
+    findRoomByCode, 
+    setPlayerReady, 
+    updateGameState, 
+    deleteRoom,
+    kickPlayer,
+    banPlayer,
+    transferHost
+  } = useGameRoom(roomCode);
+
+  // Calcul du temps restant basé sur startTime et endTime du serveur
+  const getTimeLeft = () => {
+    if (!room?.startTime || !room?.endTime) return settings.timeLimit;
+    const now = Date.now();
+    const timeLeft = Math.max(0, Math.ceil((room.endTime - now) / 1000));
+    return timeLeft;
+  };
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(gameHistory));
@@ -72,7 +92,6 @@ function App() {
       setCurrentRound(room.currentRound || 1);
       setLetter(room.currentLetter || '');
       setGameState('playing');
-      setTimeLeft(settings.timeLimit);
       setAnswers({});
       settings.categories.forEach(cat => {
         setAnswers(prev => ({ ...prev, [cat.name]: '' }));
@@ -149,6 +168,30 @@ function App() {
     }
   };
 
+  const handleKickPlayer = async (playerToKick: string) => {
+    try {
+      await kickPlayer(playerToKick);
+    } catch (err: any) {
+      alert(err.message);
+    }
+  };
+
+  const handleBanPlayer = async (playerToBan: string) => {
+    try {
+      await banPlayer(playerToBan);
+    } catch (err: any) {
+      alert(err.message);
+    }
+  };
+
+  const handleTransferHost = async (newHost: string) => {
+    try {
+      await transferHost(newHost);
+    } catch (err: any) {
+      alert(err.message);
+    }
+  };
+
   const handleInputChange = (category: string, value: string) => {
     setAnswers(prev => ({ ...prev, [category]: value }));
   };
@@ -180,6 +223,7 @@ function App() {
     
     const seed = Math.random().toString(36).substring(2);
     const newLetter = generateLetter();
+    const now = Date.now();
     
     const updatedPlayers = room.players.map(p => ({
       ...p,
@@ -192,7 +236,8 @@ function App() {
       status: 'playing',
       currentRound: 1,
       currentLetter: newLetter,
-      timeLeft: settings.timeLimit,
+      startTime: now,
+      endTime: now + settings.timeLimit * 1000,
       answers: {},
       seed,
       roundHistory: [],
@@ -229,89 +274,96 @@ function App() {
   const endRound = async () => {
     if (!room) return;
 
-    const { score: roundScore, validWords } = calculateScore(answers, letter);
-    const round: Round = {
-      letter,
-      answers: { ...answers },
-      score: roundScore
-    };
-    
-    const newCurrentGame = [...currentGame, round];
-    setCurrentGame(newCurrentGame);
-    
-    const roundHistory: RoundHistory = {
-      letter,
-      playerAnswers: {
-        [playerName]: {
-          answers: { ...answers },
-          validWords,
-          score: roundScore
+    try {
+      const { score: roundScore, validWords } = calculateScore(answers, letter);
+      const round: Round = {
+        letter,
+        answers: { ...answers },
+        score: roundScore
+      };
+      
+      const newCurrentGame = [...currentGame, round];
+      setCurrentGame(newCurrentGame);
+      
+      const roundHistory: RoundHistory = {
+        letter,
+        playerAnswers: {
+          [playerName]: {
+            answers: { ...answers },
+            validWords,
+            score: roundScore
+          }
         }
-      }
-    };
-    
-    const updatedHistory = [...(room.roundHistory || []), roundHistory];
-    
-    const updatedPlayers = room.players.map(p => {
-      if (p.name === playerName) {
-        const currentScore = p.score || 0;
-        const currentValidWords = p.validWords || 0;
+      };
+      
+      const updatedHistory = [...(room.roundHistory || []), roundHistory];
+      
+      const updatedPlayers = room.players.map(p => {
+        if (p.name === playerName) {
+          const currentScore = p.score || 0;
+          const currentValidWords = p.validWords || 0;
+          return {
+            ...p,
+            score: currentScore + roundScore,
+            validWords: currentValidWords + validWords,
+            hasValidatedRound: false
+          };
+        }
         return {
           ...p,
-          score: currentScore + roundScore,
-          validWords: currentValidWords + validWords,
           hasValidatedRound: false
         };
+      });
+      
+      if (currentRound < settings.rounds) {
+        const newLetter = generateLetter();
+        const nextRound = currentRound + 1;
+        const now = Date.now();
+        
+        await updateGameState({
+          currentRound: nextRound,
+          currentLetter: newLetter,
+          startTime: now,
+          endTime: now + settings.timeLimit * 1000,
+          answers: {},
+          players: updatedPlayers,
+          roundHistory: updatedHistory
+        });
+        
+        setCurrentRound(nextRound);
+        setLetter(newLetter);
+        setAnswers({});
+        settings.categories.forEach(cat => {
+          setAnswers(prev => ({ ...prev, [cat.name]: '' }));
+        });
+      } else {
+        const totalScore = [...newCurrentGame].reduce((sum, r) => sum + r.score, 0);
+        const gameRecord: GameHistory = {
+          id: Date.now().toString(),
+          date: new Date().toLocaleString(),
+          rounds: newCurrentGame,
+          totalScore,
+          settings: { ...settings }
+        };
+        
+        setGameHistory(prev => [gameRecord, ...prev]);
+        
+        await updateGameState({
+          status: 'finished',
+          currentRound: currentRound,
+          currentLetter: letter,
+          startTime: null,
+          endTime: null,
+          answers: {},
+          players: updatedPlayers,
+          roundHistory: updatedHistory
+        });
+        
+        setGameState('results');
       }
-      return {
-        ...p,
-        hasValidatedRound: false
-      };
-    });
-    
-    if (currentRound < settings.rounds) {
-      const newLetter = generateLetter();
-      const nextRound = currentRound + 1;
-      
-      await updateGameState({
-        currentRound: nextRound,
-        currentLetter: newLetter,
-        timeLeft: settings.timeLimit,
-        answers: {},
-        players: updatedPlayers,
-        roundHistory: updatedHistory
-      });
-      
-      setCurrentRound(nextRound);
-      setLetter(newLetter);
-      setTimeLeft(settings.timeLimit);
-      setAnswers({});
-      settings.categories.forEach(cat => {
-        setAnswers(prev => ({ ...prev, [cat.name]: '' }));
-      });
-    } else {
-      const totalScore = [...newCurrentGame].reduce((sum, r) => sum + r.score, 0);
-      const gameRecord: GameHistory = {
-        id: Date.now().toString(),
-        date: new Date().toLocaleString(),
-        rounds: newCurrentGame,
-        totalScore,
-        settings: { ...settings }
-      };
-      
-      setGameHistory(prev => [gameRecord, ...prev]);
-      
-      await updateGameState({
-        status: 'finished',
-        currentRound: currentRound,
-        currentLetter: letter,
-        timeLeft: 0,
-        answers: {},
-        players: updatedPlayers,
-        roundHistory: updatedHistory
-      });
-      
-      setGameState('results');
+    } catch (err: any) {
+      console.error('Error ending round:', err);
+      alert('Une erreur est survenue lors de la fin de la manche. Veuillez réessayer.');
     }
   };
 
@@ -351,15 +403,16 @@ function App() {
 
   useEffect(() => {
     let timer: NodeJS.Timeout;
-    if (gameState === 'playing' && timeLeft > 0) {
+    if (gameState === 'playing' && room?.startTime && room?.endTime) {
       timer = setInterval(() => {
-        setTimeLeft(prev => prev - 1);
+        const timeLeft = getTimeLeft();
+        if (timeLeft === 0) {
+          validateRound();
+        }
       }, 1000);
-    } else if (timeLeft === 0 && gameState === 'playing') {
-      validateRound();
     }
     return () => clearInterval(timer);
-  }, [gameState, timeLeft]);
+  }, [gameState, room?.startTime, room?.endTime]);
 
   useEffect(() => {
     if (room && gameState === 'playing') {
@@ -665,8 +718,8 @@ function App() {
             <div className="space-y-3">
               <div className="text-4xl font-bold flex items-center">
                 <Timer className="w-8 h-8 mr-3 text-red-400" />
-                <span className={timeLeft <= 10 ? 'text-red-400' : ''}>
-                  {timeLeft}s
+                <span className={getTimeLeft() <= 10 ? 'text-red-400' : ''}>
+                  {getTimeLeft()}s
                 </span>
               </div>
               <div className="text-xl text-white/70">
@@ -738,6 +791,7 @@ function App() {
           <ScoreBoard
             players={room.players}
             roundHistory={room.roundHistory || []}
+            categories={settings.categories}
           />
         )}
 
@@ -859,6 +913,9 @@ function App() {
           onStart={startGame}
           onLeave={handleLeaveRoom}
           onReady={handleReady}
+          onKickPlayer={handleKickPlayer}
+          onBanPlayer={handleBanPlayer}
+          onTransferHost={handleTransferHost}
         />
       )}
       {gameState === 'playing' && renderGame()}
