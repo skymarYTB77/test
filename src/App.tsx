@@ -513,7 +513,7 @@ function App() {
               />
               <button
                 onClick={() => handleSettingChange('timeLimit', settings.timeLimit + 10)}
-                className="p-2 rounded-lg bg-white/10 hover:bg-white/20"
+                className="p-2 rounded-lg bg-white/10 hover: bg-white/20"
               >
                 <Plus className="w-5 h-5" />
               </button>

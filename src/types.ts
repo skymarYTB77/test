@@ -7,7 +7,6 @@ export type Player = {
   score?: number;
   validWords?: number;
   hasValidatedRound?: boolean;
-  validatedAnswers?: Record<string, boolean>;
 };
 
 export type GameRoom = {
@@ -19,8 +18,8 @@ export type GameRoom = {
   settings: GameSettings;
   currentRound?: number;
   currentLetter?: string;
-  startTime?: number | null;
-  endTime?: number | null;
+  startTime: number | null;
+  endTime: number | null;
   answers?: Record<string, Record<string, string>>;
   seed?: string;
   roundHistory?: RoundHistory[];
@@ -48,7 +47,6 @@ export type PlayerRoundAnswers = {
   answers: Record<string, string>;
   validWords: number;
   score: number;
-  validatedAnswers?: Record<string, boolean>;
 };
 
 export type GameHistory = {

@@ -81,7 +81,8 @@ export function useGameRoom(roomCode: string | null) {
         startTime: null,
         endTime: null,
         answers: {},
-        bannedPlayers: []
+        bannedPlayers: [],
+        roundHistory: []
       };
 
       await setDoc(doc(db, 'games', code), newRoom);
@@ -272,6 +273,15 @@ export function useGameRoom(roomCode: string | null) {
           const allPlayersValidated = currentRoom.players.every(p => p.hasValidatedRound);
           if (!allPlayersValidated) {
             throw new Error('Tous les joueurs n\'ont pas validé leurs réponses');
+          }
+        }
+
+        // Si on met à jour le startTime, s'assurer que endTime est cohérent
+        if (updates.startTime !== undefined && updates.endTime === undefined) {
+          if (updates.startTime !== null) {
+            updates.endTime = updates.startTime + (currentRoom.settings.timeLimit * 1000);
+          } else {
+            updates.endTime = null;
           }
         }
 
