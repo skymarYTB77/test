@@ -93,11 +93,11 @@ function App() {
       setLetter(room.currentLetter || '');
       setGameState('playing');
       setAnswers({});
-      settings.categories.forEach(cat => {
+      room.settings.categories.forEach(cat => {
         setAnswers(prev => ({ ...prev, [cat.name]: '' }));
       });
     }
-  }, [room, room?.status, gameState, settings]);
+  }, [room, room?.status, gameState]);
 
   useEffect(() => {
     if (room) {
@@ -221,28 +221,33 @@ function App() {
   const startGame = async () => {
     if (!room) return;
     
-    const seed = Math.random().toString(36).substring(2);
-    const newLetter = generateLetter();
-    const now = Date.now();
-    
-    const updatedPlayers = room.players.map(p => ({
-      ...p,
-      hasValidatedRound: false,
-      score: 0,
-      validWords: 0
-    }));
-    
-    await updateGameState({
-      status: 'playing',
-      currentRound: 1,
-      currentLetter: newLetter,
-      startTime: now,
-      endTime: now + settings.timeLimit * 1000,
-      answers: {},
-      seed,
-      roundHistory: [],
-      players: updatedPlayers
-    });
+    try {
+      const seed = Math.random().toString(36).substring(2);
+      const newLetter = generateLetter();
+      const now = Date.now();
+      
+      const updatedPlayers = room.players.map(p => ({
+        ...p,
+        hasValidatedRound: false,
+        score: 0,
+        validWords: 0
+      }));
+      
+      await updateGameState({
+        status: 'playing',
+        currentRound: 1,
+        currentLetter: newLetter,
+        startTime: now,
+        endTime: now + room.settings.timeLimit * 1000,
+        answers: {},
+        seed,
+        roundHistory: [],
+        players: updatedPlayers
+      });
+    } catch (err: any) {
+      console.error('Error starting game:', err);
+      alert('Erreur lors du lancement de la partie: ' + err.message);
+    }
   };
 
   const calculateScore = (answers: Record<string, string>, letter: string) => {
@@ -315,7 +320,7 @@ function App() {
         };
       });
       
-      if (currentRound < settings.rounds) {
+      if (currentRound < room.settings.rounds) {
         const newLetter = generateLetter();
         const nextRound = currentRound + 1;
         const now = Date.now();
@@ -324,7 +329,7 @@ function App() {
           currentRound: nextRound,
           currentLetter: newLetter,
           startTime: now,
-          endTime: now + settings.timeLimit * 1000,
+          endTime: now + room.settings.timeLimit * 1000,
           answers: {},
           players: updatedPlayers,
           roundHistory: updatedHistory
@@ -333,7 +338,7 @@ function App() {
         setCurrentRound(nextRound);
         setLetter(newLetter);
         setAnswers({});
-        settings.categories.forEach(cat => {
+        room.settings.categories.forEach(cat => {
           setAnswers(prev => ({ ...prev, [cat.name]: '' }));
         });
       } else {
@@ -343,7 +348,7 @@ function App() {
           date: new Date().toLocaleString(),
           rounds: newCurrentGame,
           totalScore,
-          settings: { ...settings }
+          settings: { ...room.settings }
         };
         
         setGameHistory(prev => [gameRecord, ...prev]);
@@ -723,7 +728,7 @@ function App() {
                 </span>
               </div>
               <div className="text-xl text-white/70">
-                Manche {currentRound}/{settings.rounds}
+                Manche {currentRound}/{room?.settings.rounds}
               </div>
             </div>
           </div>
@@ -739,7 +744,7 @@ function App() {
         </div>
 
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-8">
-          {settings.categories.map(category => (
+          {room?.settings.categories.map(category => (
             <div key={category.name} className="bg-white/10 rounded-xl p-8 space-y-4 min-h-[200px]">
               <label className="block text-2xl font-medium">
                 {category.label}
@@ -791,7 +796,7 @@ function App() {
           <ScoreBoard
             players={room.players}
             roundHistory={room.roundHistory || []}
-            categories={settings.categories}
+            categories={room.settings.categories}
           />
         )}
 

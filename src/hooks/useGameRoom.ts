@@ -268,11 +268,13 @@ export function useGameRoom(roomCode: string | null) {
 
         const currentRoom = roomDoc.data() as GameRoom;
         
-        // Vérifier si tous les joueurs ont validé avant de passer à la manche suivante
+        // Ne pas vérifier la validation des joueurs lors du démarrage de la partie
         if (updates.currentRound && updates.currentRound > (currentRoom.currentRound || 0)) {
-          const allPlayersValidated = currentRoom.players.every(p => p.hasValidatedRound);
-          if (!allPlayersValidated) {
-            throw new Error('Tous les joueurs n\'ont pas validé leurs réponses');
+          if (updates.status !== 'playing' || updates.currentRound !== 1) {
+            const allPlayersValidated = currentRoom.players.every(p => p.hasValidatedRound);
+            if (!allPlayersValidated) {
+              throw new Error('Tous les joueurs n\'ont pas validé leurs réponses');
+            }
           }
         }
 

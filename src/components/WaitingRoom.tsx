@@ -25,7 +25,10 @@ export function WaitingRoom({
 }: WaitingRoomProps) {
   const currentPlayer = room.players.find(p => p.name === playerName);
   const isHost = currentPlayer?.isHost;
-  const allPlayersReady = room.players.every(p => p.isReady || p.isHost);
+  // Modification ici : ne pas compter l'hôte dans la vérification
+  const allPlayersReady = room.players
+    .filter(p => !p.isHost)
+    .every(p => p.isReady);
   const canStart = isHost && allPlayersReady && room.players.length > 1;
 
   const [selectedPlayer, setSelectedPlayer] = useState<string | null>(null);
